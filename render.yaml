@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: apipod-gateway
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      - key: PORT
+        value: 9000
+    disk:
+      name: apipod-data
+      mountPath: /app/data
+      sizeGB: 1
