@@ -802,8 +802,12 @@ def create_auth_middleware(auth_manager: AuthManager, key_manager: GatewayKeyMan
 
 # ============ 创建应用 ============
 
-def create_app(pool_file: str = "account_pool.json") -> web.Application:
+def create_app(pool_file: str = "account_pool.json", data_dir: str = "") -> web.Application:
     """创建 aiohttp 应用"""
+    # 如果指定了 data_dir，配置文件也放在 data_dir 中
+    users_file = os.path.join(data_dir, "users.json") if data_dir else "users.json"
+    config_file = os.path.join(data_dir, "gateway_config.json") if data_dir else "gateway_config.json"
+
     pool = AccountPool(pool_file)
     pool.load()
 
@@ -811,8 +815,8 @@ def create_app(pool_file: str = "account_pool.json") -> web.Application:
     web_api = WebAPI(pool, gateway)
 
     # 初始化认证管理器和网关 Key 管理器
-    auth_manager = AuthManager()
-    key_manager = GatewayKeyManager()
+    auth_manager = AuthManager(users_file)
+    key_manager = GatewayKeyManager(config_file)
     auth_api = AuthAPI(auth_manager)
     key_api = GatewayKeyAPI(key_manager, auth_manager)
 
@@ -895,13 +899,26 @@ def main():
     parser = argparse.ArgumentParser(description='APIPod Gateway Server')
     parser.add_argument('--host', default='0.0.0.0', help='绑定地址 (默认: 0.0.0.0)')
     parser.add_argument('--port', type=int, default=None, help='端口 (默认: 9000)')
-    parser.add_argument('--pool-file', default='account_pool.json', help='账号池文件路径')
+    parser.add_argument('--pool-file', default=None, help='账号池文件路径')
     args = parser.parse_args()
+
+    # 支持 DATA_DIR 环境变量（用于 Render 等平台持久化存储）
+    data_dir = os.environ.get('DATA_DIR', '')
+    if data_dir and not os.path.exists(data_dir):
+        os.makedirs(data_dir, exist_ok=True)
+
+    # 数据文件路径
+    if args.pool_file:
+        pool_file = args.pool_file
+    elif data_dir:
+        pool_file = os.path.join(data_dir, 'account_pool.json')
+    else:
+        pool_file = 'account_pool.json'
 
     # 优先使用命令行参数，其次环境变量 PORT（Render 等平台使用），最后默认 9000
     port = args.port or int(os.environ.get('PORT', '9000'))
 
-    app = create_app(args.pool_file)
+    app = create_app(pool_file, data_dir)
 
     print(f"\n{'='*60}")
     print(f"APIPod Gateway Server")

@@ -7,6 +7,8 @@ services:
     envVars:
       - key: PORT
         value: 9000
+      - key: DATA_DIR
+        value: /app/data
     disk:
       name: apipod-data
       mountPath: /app/data
